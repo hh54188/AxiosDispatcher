@@ -18,6 +18,37 @@ class AxiosDispatcher {
       1
     );
   }
+  triggerExecute() {
+    if (!this.executeQueue.length) {
+      return;
+    }
+
+    const availableConfigs = this.executeQueue
+      .map(handle => {
+        return this.executeHandleDict[handle];
+      })
+      .filter(item => !!item);
+
+    const results = availableConfigs.reduce(
+      (prevPromise, { config, cancelSource, handle }) => {
+        return prevPromise.then(prevResults => {
+          return axios(config, {
+            cancelToken: cancelSource.token
+          })
+            .then(response => {
+              this.clear(handle);
+              return [...prevResults, response];
+            })
+            .catch(error => {
+              this.clear(handle);
+              return [...prevResults, error];
+            });
+        });
+      },
+      Promise.resolve([])
+    );
+    console.log(results);
+  }
   feed(config) {
     const configs = _.isArray(config) ? config : [config];
     this.waitingQueue = [...this.waitingQueue, ...configs];
@@ -30,37 +61,40 @@ class AxiosDispatcher {
     const nextRequestRawConfigs = this.waitingQueue.splice(0, remainSize);
 
     nextRequestRawConfigs.forEach(config => {
-      const { callback = new Function() } = config;
-
-      let cancelHandler = null;
       const handle = _.uniqueId();
 
-      axios(config, {
-        cancelToken: new CancelToken(function executor(c) {
-          cancelHandler = c;
-        })
-      })
-        .then(response => {
-          callback(response);
-          this.clear(handle);
-        })
-        .catch(error => {
-          callback(null, error);
-          this.clear(handle);
-        });
-
       this.executeHandleDict[handle] = {
-        cancelHandler,
-        config
+        cancelSource: CancelToken.source(),
+        config,
+        handle
       };
       this.executeQueue.push(handle);
     });
+    this.triggerExecute();
   }
 }
 
 window.d = new AxiosDispatcher();
 
-window.d.feed({
-  url: "https://randomuser.me/api/",
-  method: "GET"
-});
+window.d.feed([
+  {
+    url: "https://reqres.in/api/users?delay=3",
+    method: "GET"
+  },
+  {
+    url: "https://reqres.in/api/users?delay=3",
+    method: "GET"
+  },
+  {
+    url: "https://reqres.in/api/users?delay=3",
+    method: "GET"
+  },
+  {
+    url: "https://reqres.in/api/users?delay=3",
+    method: "GET"
+  },
+  {
+    url: "https://reqres.in/api/users?delay=3",
+    method: "GET"
+  }
+]);
