@@ -6,6 +6,7 @@ const CancelToken = axios.CancelToken;
 class AxiosDispatcher {
   constructor() {
     this.executeQueueMaxSize = 10;
+    this.onExecuting = false;
 
     this.waitingQueue = [];
     this.executeQueue = [];
@@ -19,10 +20,10 @@ class AxiosDispatcher {
     );
   }
   triggerExecute() {
-    if (!this.executeQueue.length) {
+    if (!this.executeQueue.length || this.onExecuting) {
       return;
     }
-
+    this.onExecuting = true;
     const availableConfigs = this.executeQueue
       .map(handle => {
         return this.executeHandleDict[handle];
