@@ -29,29 +29,31 @@ class AxiosDispatcher {
         return this.executeHandleDict[handle];
       })
       .filter(item => !!item);
-
+    let continueExecute = true;
     const resultPromise = availableConfigs.reduce(
       (prevPromise, { config, config: { callback }, cancelSource, handle }) => {
         return prevPromise.then(prevResults => {
+          if (!continueExecute) {
+            availableConfigs.splice(1);
+            return prevPromise;
+          }
           return axios(config, {
             cancelToken: cancelSource.token
           })
             .then(response => {
               this.clear(handle);
               callback &&
-                callback.call(this, null, response, () => {
-                  availableConfigs.splice(1);
-                  return [...prevResults, response];
-                });
+                callback.bind(this, () => {
+                  continueExecute = false;
+                })(null, response);
               return [...prevResults, response];
             })
             .catch(error => {
               this.clear(handle);
               callback &&
-                callback.call(this, error, null, () => {
-                  availableConfigs.splice(1);
-                  return [...prevResults, response];
-                });
+                callback.bind(this, () => {
+                  continueExecute = false;
+                })(error, null);
               return [...prevResults, error];
             });
         });
@@ -87,13 +89,13 @@ class AxiosDispatcher {
   }
 }
 
-window.d = new AxiosDispatcher();
+const dispatcher = new AxiosDispatcher();
 
-window.d.feed([
+dispatcher.feed([
   {
     url: "https://reqres.in/api/users?delay=3",
     method: "GET",
-    callback: (error, result, stop) => {
+    callback: (stop, error, result) => {
       stop();
     }
   },
