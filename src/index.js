@@ -39,8 +39,8 @@ class AxiosDispatcher {
               this.clear(handle);
               callback &&
                 callback.call(this, null, response, () => {
-                  console.log("STOPPED");
                   availableConfigs.splice(1);
+                  return [...prevResults, response];
                 });
               return [...prevResults, response];
             })
@@ -49,6 +49,7 @@ class AxiosDispatcher {
               callback &&
                 callback.call(this, error, null, () => {
                   availableConfigs.splice(1);
+                  return [...prevResults, response];
                 });
               return [...prevResults, error];
             });
@@ -92,17 +93,12 @@ window.d.feed([
     url: "https://reqres.in/api/users?delay=3",
     method: "GET",
     callback: (error, result, stop) => {
-      console.log(error, result);
-      console.log("callback");
       stop();
     }
   },
   {
     url: "https://reqres.in/api/users?delay=3",
-    method: "GET",
-    callback: (error, result, stop) => {
-      console.log(error, result);
-    }
+    method: "GET"
   },
   {
     url: "https://reqres.in/api/users?delay=3",
