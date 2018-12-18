@@ -29,25 +29,36 @@ class AxiosDispatcher {
       })
       .filter(item => !!item);
 
-    const results = availableConfigs.reduce(
-      (prevPromise, { config, cancelSource, handle }) => {
+    const resultPromise = availableConfigs.reduce(
+      (prevPromise, { config, config: { callback }, cancelSource, handle }) => {
         return prevPromise.then(prevResults => {
           return axios(config, {
             cancelToken: cancelSource.token
           })
             .then(response => {
               this.clear(handle);
+              callback &&
+                callback.call(this, null, response, () => {
+                  console.log("STOPPED");
+                  availableConfigs.splice(1);
+                });
               return [...prevResults, response];
             })
             .catch(error => {
               this.clear(handle);
+              callback &&
+                callback.call(this, error, null, () => {
+                  availableConfigs.splice(1);
+                });
               return [...prevResults, error];
             });
         });
       },
       Promise.resolve([])
     );
-    console.log(results);
+    resultPromise.then(results => {
+      console.log(results);
+    });
   }
   feed(config) {
     const configs = _.isArray(config) ? config : [config];
@@ -79,11 +90,19 @@ window.d = new AxiosDispatcher();
 window.d.feed([
   {
     url: "https://reqres.in/api/users?delay=3",
-    method: "GET"
+    method: "GET",
+    callback: (error, result, stop) => {
+      console.log(error, result);
+      console.log("callback");
+      stop();
+    }
   },
   {
     url: "https://reqres.in/api/users?delay=3",
-    method: "GET"
+    method: "GET",
+    callback: (error, result, stop) => {
+      console.log(error, result);
+    }
   },
   {
     url: "https://reqres.in/api/users?delay=3",
